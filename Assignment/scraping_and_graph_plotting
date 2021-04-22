@@ -105,6 +105,7 @@ fig = plt.figure(figsize=(10,10))
 ax = fig.add_subplot(1, 1, 1, projection='3d')
 surf = ax.plot_surface(x, y, z, cmap=cm.coolwarm, linewidth=0, antialiased=False)
 
+# settings for graph properties
 ax.set_xlabel("trading days since 01/02/20")
 ax.set_ylabel("months to maturity")
 ax.set_zlabel("rate")
@@ -114,6 +115,8 @@ plt.show()
 
 
 
+
+# Plotting "Interest Rate Time Series" Graph
 # generate data frame: yield_curve_df
 header_part = curves_arr[0:1,1:]
 data_part = curves_arr[1:,1:].astype(float)
@@ -123,6 +126,10 @@ yield_curve_df.plot()
 plt.title("Interest Rate Time Series, 2020")
 plt.show()
 
+
+
+
+# Plotting "2020 Yield Curves, 20 Day Intervals" Graph
 # generate data frame: by_day_yield_curve_df
 data_part2 = curves_arr[1::20,1:].astype(float)
 index = curves_arr[1::20, 0:1]
