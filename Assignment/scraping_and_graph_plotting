@@ -1,0 +1,136 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Sun Apr 18 00:42:43 2021
+
+@author: Vivian Chang
+"""
+
+
+from urllib.request import urlopen  # b_soup_1.py
+from bs4 import BeautifulSoup
+import numpy as np
+import pandas as pd
+from mpl_toolkits.mplot3d import Axes3D
+import matplotlib.pyplot as plt
+from matplotlib import cm
+
+
+"""
+Part 1:
+Fetch data from websites using beautiful soup
+"""
+
+# target website to fetch data from
+html = urlopen('https://www.treasury.gov/resource-center/'
+               'data-chart-center/interest-rates/Pages/'
+               'TextView.aspx?data=yieldYear&year=2020')
+
+bsyc = BeautifulSoup(html.read(), "lxml")
+
+fout = open('bsyc_temp.txt', 'wt',
+		encoding='utf-8')
+
+fout.write(str(bsyc))
+
+fout.close()
+
+# so get a list of all table tags
+table_list = bsyc.findAll('table')
+
+# only one class="t-chart" table, so add that
+# to findAll as a dictionary attribute
+tc_table_list = bsyc.findAll('table',
+                      { "class" : "t-chart" } )
+
+# get the target table
+tc_table = tc_table_list[0]
+
+
+
+"""
+Part 2:
+Clean the data acquired from the website
+"""
+
+# append data into lists
+daily_yield_curves = []    #list for data cleaning and drawing graphs
+d_y_c_formatted = []    #list for generation of txt file
+
+for c in tc_table.children:
+    temp = []
+    for r in c.children:
+        if not (r.contents[0].lower()).islower() and not ('/' in r.contents[0]):
+            num = float(r.contents[0]) # alter numeric data from String to float
+            temp.append(num)
+        else:
+            temp.append(r.contents[0]) # data of String type remains the same
+    
+    # generate list of strings for txt file
+    # formatting for column names
+    if 'Date' in temp:
+        list_to_string = ''.join([str(f'{e:8}') for e in temp])
+        list_to_string = list_to_string[0:4] + '    ' + list_to_string[4:] + '\n----------------------------------------------------------------------------------------------------------'
+    
+    # formatting for rates (numeric data)
+    else:
+        list_to_string = ''.join([str(f'{e:8}') for e in temp])
+    
+    d_y_c_formatted.append(list_to_string + '\n')
+    daily_yield_curves.append(temp)
+
+
+# save the data to file
+with open('daily_yield_curves.txt', 'w', encoding='utf-8') as f:
+    f.writelines(row for row in d_y_c_formatted)
+
+
+"""
+Part 3:
+Plot graphs
+"""
+curves_arr = np.array(daily_yield_curves)  
+
+# generate 3D surface plot
+x = np.array([[i for i in range(len(curves_arr[1:, 0:1]))]])   #x-axis
+
+temp = [1, 2, 3, 6, 12, 24, 36, 60, 84, 120, 240, 360]   #y-axis
+y = []
+for i in temp:
+    y.append([i])
+y = np.array(y)
+
+z = np.array(curves_arr[1:,1:].astype(float)).T   #z-axis
+
+fig = plt.figure(figsize=(10,10))
+ax = fig.add_subplot(1, 1, 1, projection='3d')
+surf = ax.plot_surface(x, y, z, cmap=cm.coolwarm, linewidth=0, antialiased=False)
+
+ax.set_xlabel("trading days since 01/02/20")
+ax.set_ylabel("months to maturity")
+ax.set_zlabel("rate")
+fig.colorbar(surf, shrink=0.5, aspect=10)
+
+plt.show()
+
+
+
+# generate data frame: yield_curve_df
+header_part = curves_arr[0:1,1:]
+data_part = curves_arr[1:,1:].astype(float)
+yield_curve_df = pd.DataFrame(data_part, index=(curves_arr[i+1,0] for i in range(len(data_part))),
+                              columns=header_part[0])
+yield_curve_df.plot()
+plt.title("Interest Rate Time Series, 2020")
+plt.show()
+
+# generate data frame: by_day_yield_curve_df
+data_part2 = curves_arr[1::20,1:].astype(float)
+index = curves_arr[1::20, 0:1]
+
+by_day_yield_curve_df = (pd.DataFrame(data_part2, index= (index[i, 0] for i in range(len(index))),
+                              columns=[1, 2, 3, 6, 12, 24, 36, 60, 84, 120, 240, 360])).T
+
+by_day_yield_curve_df.plot()
+plt.title("2020 Yield Curves, 20 Day Intervals")
+plt.legend(loc='right')
+plt.show()
